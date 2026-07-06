@@ -14,6 +14,57 @@ const EMOJI_DICT: Array<[RegExp, string]> = [
   [/\b(wild|fire|crazy|insane)\b/i, "🔥"],
 ];
 
+// Country detection for the semantic components. Multi-word aliases matched
+// as bigrams; short codes ("US") matched case-sensitively so the pronoun
+// "us" never becomes a map.
+const COUNTRIES: Array<{
+  code: string;
+  name: string;
+  label: string;
+  aliases: Array<{ t: string; cased?: boolean }>;
+}> = [
+  {
+    code: "us",
+    name: "United States",
+    label: "USA",
+    aliases: [{ t: "united states" }, { t: "america" }, { t: "usa" }, { t: "US", cased: true }],
+  },
+  { code: "cn", name: "China", label: "China", aliases: [{ t: "china" }] },
+  {
+    code: "gb",
+    name: "United Kingdom",
+    label: "UK",
+    aliases: [{ t: "united kingdom" }, { t: "britain" }, { t: "UK", cased: true }],
+  },
+  { code: "in", name: "India", label: "India", aliases: [{ t: "india" }] },
+  { code: "jp", name: "Japan", label: "Japan", aliases: [{ t: "japan" }] },
+  { code: "de", name: "Germany", label: "Germany", aliases: [{ t: "germany" }] },
+  { code: "fr", name: "France", label: "France", aliases: [{ t: "france" }] },
+  { code: "kr", name: "South Korea", label: "Korea", aliases: [{ t: "south korea" }, { t: "korea" }] },
+  { code: "tw", name: "Taiwan", label: "Taiwan", aliases: [{ t: "taiwan" }] },
+];
+
+type CountryMention = { code: string; name: string; label: string; wordIndex: number };
+
+const countryMentions = (transcript: Transcript, start: number, end: number): CountryMention[] => {
+  const out: CountryMention[] = [];
+  for (let i = start; i <= end; i++) {
+    const raw = transcript.words[i]!.text.replace(/[^\p{L}.]/gu, "");
+    const lower = raw.toLowerCase().replace(/\./g, "");
+    const next = i < end ? transcript.words[i + 1]!.text.replace(/[^\p{L}]/gu, "").toLowerCase() : "";
+    const bigram = `${lower} ${next}`;
+    for (const c of COUNTRIES) {
+      const hit = c.aliases.some((a) =>
+        a.cased ? raw.replace(/\./g, "") === a.t : a.t === lower || a.t === bigram,
+      );
+      if (hit && !out.some((m) => m.code === c.code)) {
+        out.push({ code: c.code, name: c.name, label: c.label, wordIndex: i });
+      }
+    }
+  }
+  return out;
+};
+
 const sentenceRangeAround = (
   transcript: Transcript,
   wordIndex: number,
@@ -60,6 +111,86 @@ export const mockPlan = (analysis: Analysis, transcript: Transcript): PlanBody =
         rationale: "hook: open on the strongest claim",
       },
     });
+  }
+
+  // Semantic depiction: matchup sentences become versus; single-country
+  // beats become geoMap zooms (extended through pronoun follow-ons).
+  const segs = transcript.segments;
+  for (let s = 0; s < segs.length; s++) {
+    const seg = segs[s]!;
+    const mentions = countryMentions(transcript, seg.startWord, seg.endWord);
+    const isMatchup = mentions.length >= 2 && /\b(or|vs|versus|against)\b/i.test(seg.text);
+    if (isMatchup) {
+      const [a, b] = mentions;
+      // A matchup question is usually short — let the card breathe into the
+      // following sentence so the VS moment isn't cut off mid-slam.
+      const shortQuestion = seg.endWord - seg.startWord < 10;
+      const end =
+        shortQuestion && s + 1 < segs.length ? segs[s + 1]!.endWord : seg.endWord;
+      if (shortQuestion) s++;
+      marked.push({
+        start: seg.startWord,
+        end,
+        scene: {
+          layout: "animation-full",
+          splitConfig: null,
+          talkingHead: null,
+          transitionIn: "fade",
+          graphic: {
+            component: "versus",
+            props: {
+              left: { label: a!.label, assetIndex: 0, triggerWordIndex: a!.wordIndex },
+              right: { label: b!.label, assetIndex: 1, triggerWordIndex: b!.wordIndex },
+            },
+            assets: [
+              { kind: "flag", query: a!.code, resolvedName: null, resolvedSvg: null },
+              { kind: "flag", query: b!.code, resolvedName: null, resolvedSvg: null },
+            ],
+            enter: "pop",
+            exit: "fade",
+          },
+          rationale: "matchup framing — show the two contenders",
+        },
+      });
+      continue;
+    }
+    if (mentions.length === 1) {
+      const m = mentions[0]!;
+      // Extend the map beat while following sentences stay on-subject.
+      let end = seg.endWord;
+      let k = s;
+      while (
+        k + 1 < segs.length &&
+        /^(it|its|they|their|that)\b/i.test(segs[k + 1]!.text)
+      ) {
+        k++;
+        end = segs[k]!.endWord;
+      }
+      marked.push({
+        start: seg.startWord,
+        end,
+        scene: {
+          layout: "split",
+          splitConfig: { side: "top", ratio: 0.42 },
+          talkingHead: { zoom: "none" },
+          transitionIn: "slide",
+          graphic: {
+            component: "geoMap",
+            props: {
+              country: m.name,
+              label: m.label,
+              flagAssetIndex: 0,
+              triggerWordIndex: m.wordIndex,
+            },
+            assets: [{ kind: "flag", query: m.code, resolvedName: null, resolvedSvg: null }],
+            enter: "fade",
+            exit: "fade",
+          },
+          rationale: `country beat — zoom the map to ${m.name}`,
+        },
+      });
+      s = k;
+    }
   }
 
   // Stats: split-screen count-ups.

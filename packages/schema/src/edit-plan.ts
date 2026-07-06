@@ -6,7 +6,7 @@ import { ProvenanceSchema } from "./provenance";
 // The LLM speaks in word indices; the lint/snap stage owns index→ms.
 
 export const AssetSchema = z.object({
-  kind: z.enum(["icon", "emoji"]),
+  kind: z.enum(["icon", "emoji", "flag"]), // flag: query is an ISO2 country code
   query: z.string().min(1), // e.g. "volume-off" — a deterministic resolver picks the file
   resolvedName: z.string().nullable(), // filled by the resolve stage
   resolvedSvg: z.string().nullable(), // raw SVG markup, inlined so renders are hermetic
@@ -60,6 +60,26 @@ export const GraphicPropsSchemas = {
     subtitle: z.string().max(64).nullable(),
     triggerWordIndex: trigger,
   }),
+  // Semantic depiction components — visuals that SHOW what is being said,
+  // not just decorate it.
+  geoMap: z.object({
+    country: z.string().min(2).max(48), // English country name, e.g. "United States"
+    label: z.string().min(1).max(24), // short on-screen label, e.g. "USA"
+    flagAssetIndex: z.number().int().nonnegative().nullable(), // index into assets, or null
+    triggerWordIndex: trigger, // zoom lands as the country is spoken
+  }),
+  versus: z.object({
+    left: z.object({
+      label: z.string().min(1).max(20),
+      assetIndex: z.number().int().nonnegative(), // flag or icon in assets
+      triggerWordIndex: trigger,
+    }),
+    right: z.object({
+      label: z.string().min(1).max(20),
+      assetIndex: z.number().int().nonnegative(),
+      triggerWordIndex: trigger,
+    }),
+  }),
 } as const;
 
 export type ComponentName = keyof typeof GraphicPropsSchemas;
@@ -82,6 +102,8 @@ export const GraphicSchema = z.discriminatedUnion("component", [
   graphicVariant("iconRow"),
   graphicVariant("quoteCard"),
   graphicVariant("lowerThird"),
+  graphicVariant("geoMap"),
+  graphicVariant("versus"),
 ]);
 export type Graphic = z.infer<typeof GraphicSchema>;
 

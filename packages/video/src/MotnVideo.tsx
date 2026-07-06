@@ -25,7 +25,7 @@ export const MotnVideo: React.FC<RenderInput> = ({ plan, words, videoSrc }) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg, fontFamily: FONT.family }}>
-      <style>{`.motn-icon svg{width:100%;height:100%;stroke-width:1.75}`}</style>
+      <style>{`.motn-icon svg{width:100%;height:100%;stroke-width:1.75}.motn-flag svg{width:100%;height:100%;display:block}`}</style>
       <VideoLayer scenes={scenes} videoSrc={videoSrc} intensity={intensity} />
       {scenes.map(({ sc, startF, endF }) =>
         sc.graphic ? (

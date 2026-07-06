@@ -32,6 +32,25 @@ export const resolveIcon = (query: string): { name: string; svg: string } | null
   return { name: best.item, svg };
 };
 
+// Square flag SVGs from flag-icons, looked up by ISO2 code. A miss degrades
+// to a lettermark chip in the component — never a broken render.
+export const resolveFlag = (query: string): { name: string; svg: string } | null => {
+  const code = query.toLowerCase().trim().slice(0, 2);
+  if (!/^[a-z]{2}$/.test(code)) return null;
+  try {
+    const flagsDir = path.join(
+      path.dirname(require.resolve("flag-icons/package.json")),
+      "flags",
+      "1x1",
+    );
+    const file = path.join(flagsDir, `${code}.svg`);
+    if (!fs.existsSync(file)) return null;
+    return { name: code, svg: fs.readFileSync(file, "utf8") };
+  } catch {
+    return null;
+  }
+};
+
 export const runResolve = async (projectId: string): Promise<RenderInput> => {
   const plan = EditPlanSchema.parse(
     readJson<EditPlan>(projectFile(projectId, "editplan.json")),
@@ -47,8 +66,8 @@ export const runResolve = async (projectId: string): Promise<RenderInput> => {
         graphic: {
           ...sc.graphic,
           assets: sc.graphic.assets.map((a) => {
-            if (a.kind !== "icon") return a;
-            const hit = resolveIcon(a.query);
+            if (a.kind === "emoji") return a;
+            const hit = a.kind === "flag" ? resolveFlag(a.query) : resolveIcon(a.query);
             return {
               ...a,
               resolvedName: hit?.name ?? null,

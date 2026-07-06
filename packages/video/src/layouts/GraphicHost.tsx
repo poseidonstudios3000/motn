@@ -12,6 +12,8 @@ import { ListReveal } from "../components/ListReveal";
 import { IconRow } from "../components/IconRow";
 import { QuoteCard } from "../components/QuoteCard";
 import { LowerThird } from "../components/LowerThird";
+import { GeoMap } from "../components/GeoMap";
+import { Versus } from "../components/Versus";
 
 // Mounts a scene's graphic in the right region with the plan's enter/exit
 // envelope. variant tells components how they sit:
@@ -53,6 +55,20 @@ export const GraphicHost: React.FC<{ scene: Scene }> = ({ scene }) => {
         return <QuoteCard {...g.props} variant={variant} />;
       case "lowerThird":
         return <LowerThird {...g.props} variant={variant} />;
+      case "geoMap":
+        return (
+          <GeoMap
+            {...g.props}
+            flagSvg={
+              g.props.flagAssetIndex !== null
+                ? (g.assets[g.props.flagAssetIndex]?.resolvedSvg ?? null)
+                : null
+            }
+            variant={variant}
+          />
+        );
+      case "versus":
+        return <Versus {...g.props} assets={g.assets} variant={variant} />;
     }
   })();
 

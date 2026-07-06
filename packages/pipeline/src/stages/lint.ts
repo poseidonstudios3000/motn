@@ -153,6 +153,24 @@ export const lintAndSnap = (
       }
       g.props.items = ok.map((it) => ({ ...it, triggerWordIndex: clampT(it.triggerWordIndex) }));
     }
+    if (g.component === "versus") {
+      if (
+        g.props.left.assetIndex >= g.assets.length ||
+        g.props.right.assetIndex >= g.assets.length
+      ) {
+        sc.graphic = null;
+        notes.push(`scene ${sc.id}: versus with bad assetIndex — removed graphic`);
+        continue;
+      }
+      g.props.left.triggerWordIndex = clampT(g.props.left.triggerWordIndex);
+      g.props.right.triggerWordIndex = clampT(g.props.right.triggerWordIndex);
+    }
+    if (g.component === "geoMap" && g.props.flagAssetIndex !== null) {
+      if (g.props.flagAssetIndex >= g.assets.length) {
+        g.props.flagAssetIndex = null;
+        notes.push(`scene ${sc.id}: geoMap flagAssetIndex out of range — dropped flag`);
+      }
+    }
   }
 
   // 5. Captions: trim emphasis budget, drop out-of-range, space emoji.
