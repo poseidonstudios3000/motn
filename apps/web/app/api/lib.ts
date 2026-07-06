@@ -2,7 +2,7 @@ import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { REPO_ROOT } from "@motn/pipeline/lite";
+import { PROJECTS_DIR, REPO_ROOT } from "@motn/pipeline/lite";
 
 // Heavy pipeline stages run OUT OF PROCESS via the CLI: the Next server never
 // loads @remotion/bundler/renderer (native binaries webpack can't ingest),
@@ -11,6 +11,20 @@ import { REPO_ROOT } from "@motn/pipeline/lite";
 
 const TSX = path.join(REPO_ROOT, "node_modules", ".bin", "tsx");
 const CLI = path.join(REPO_ROOT, "packages", "pipeline", "src", "cli.ts");
+
+// Hosted UI-only deploys (e.g. Vercel) have no ffmpeg/Chromium/worker
+// processes and a read-only filesystem — the cockpit renders, the engine
+// doesn't. Everything that would start pipeline work gates on this.
+export const engineAvailable = (): boolean => {
+  try {
+    if (!fs.existsSync(TSX) || !fs.existsSync(CLI)) return false;
+    fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+    fs.accessSync(PROJECTS_DIR, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const running = new Set<string>();
 

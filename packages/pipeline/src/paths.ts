@@ -23,11 +23,14 @@ export const findRepoRoot = (): string => {
       dir = path.dirname(dir);
     }
   }
-  throw new Error("Could not locate repo root (pnpm-workspace.yaml)");
+  // Serverless/hosted bundle without the workspace file (e.g. the UI-only
+  // Vercel deploy): fall back to cwd. Anything touching the filesystem must
+  // gate on engineAvailable() rather than assume this is a real checkout.
+  return process.cwd();
 };
 
 export const REPO_ROOT = findRepoRoot();
-export const DATA_DIR = path.join(REPO_ROOT, "data");
+export const DATA_DIR = process.env.MOTN_DATA_DIR ?? path.join(REPO_ROOT, "data");
 export const PROJECTS_DIR = path.join(DATA_DIR, "projects");
 export const CACHE_DIR = path.join(DATA_DIR, "cache");
 export const VIDEO_PKG_DIR = path.join(REPO_ROOT, "packages", "video");

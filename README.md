@@ -49,6 +49,10 @@ pnpm studio
 
 The mock backends are deterministic and free — they exist so the edit→preview→render loop can be exercised (and CI'd) with zero keys and zero cost.
 
+## Hosting the UI (Vercel)
+
+The web app deploys to Vercel as a **UI preview only** — set the project's *Root Directory* to `apps/web` (Framework: Next.js, Node 22). The engine (ffmpeg, transcription, AI planning, Chromium rendering, persistent `data/` storage) cannot run in serverless functions, so hosted deploys show a banner instead of the upload form and return 501 from `/api/upload`. The real pipeline runs wherever there's a full machine: your laptop today; a worker box + Remotion Lambda at iteration 4 (see PLAN.md).
+
 ## Repo layout
 
 ```
