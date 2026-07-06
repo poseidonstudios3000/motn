@@ -101,4 +101,39 @@ export const extractAudio = async (src: string, dest: string) => {
   await execa(ffmpegPath, ["-y", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "flac", dest]);
 };
 
+// Speech activity map via silencedetect: [startMs, endMs] runs of speech.
+// Used by the keyless mock transcriber to align script sentences to the
+// speaker's REAL pauses instead of spreading words uniformly.
+export const detectSpeechRuns = async (
+  audioFile: string,
+  totalMs: number,
+): Promise<Array<{ startMs: number; endMs: number }>> => {
+  const { stderr } = await execa(
+    ffmpegPath,
+    ["-i", audioFile, "-af", "silencedetect=noise=-35dB:d=0.35", "-f", "null", "-"],
+    { reject: false },
+  );
+  const silences: Array<{ start: number; end: number }> = [];
+  let pendingStart: number | null = null;
+  for (const line of stderr.split("\n")) {
+    const s = line.match(/silence_start:\s*([\d.]+)/);
+    const e = line.match(/silence_end:\s*([\d.]+)/);
+    if (s) pendingStart = parseFloat(s[1]!) * 1000;
+    if (e && pendingStart !== null) {
+      silences.push({ start: pendingStart, end: parseFloat(e[1]!) * 1000 });
+      pendingStart = null;
+    }
+  }
+  if (pendingStart !== null) silences.push({ start: pendingStart, end: totalMs });
+
+  const runs: Array<{ startMs: number; endMs: number }> = [];
+  let cursor = 0;
+  for (const s of silences) {
+    if (s.start - cursor > 250) runs.push({ startMs: cursor, endMs: s.start });
+    cursor = s.end;
+  }
+  if (totalMs - cursor > 250) runs.push({ startMs: cursor, endMs: totalMs });
+  return runs.length ? runs : [{ startMs: 0, endMs: totalMs }];
+};
+
 export { ffmpegPath, ffprobePath };

@@ -9,7 +9,7 @@ import { projectFile, readJson, writeJsonAtomic } from "./paths";
 
 export const STAGE_VERSIONS: Record<string, number> = {
   ingest: 1,
-  transcribe: 1,
+  transcribe: 2, // v2: mock aligns sentences to real speech runs
   analyze: 1,
   plan: 1,
   resolve: 1,
