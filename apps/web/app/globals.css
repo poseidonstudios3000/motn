@@ -177,13 +177,29 @@ textarea.plan {
   white-space: pre-wrap;
 }
 
-.scene-chip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+.scene-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scene-card:hover {
+  border-color: rgba(255, 216, 77, 0.35);
+}
+
+.scene-head {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.scene-card select {
+  padding: 4px 8px;
   font-size: 12px;
 }
 

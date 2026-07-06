@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Player } from "@remotion/player";
 import { MotnVideo } from "@motn/video/MotnVideo";
-import type { Job, RenderInput } from "@motn/schema";
+import type { EditPlan, Job, RenderInput } from "@motn/schema";
 import { STAGES } from "@motn/schema";
+import { SceneEditor } from "./scene-editor";
 
 const POLL_MS = 1500;
 
@@ -71,6 +72,33 @@ export function ProjectView({ id }: { id: string }) {
       }
     } catch (err) {
       setMsg(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Structured edits apply immediately: the server re-lints/snaps, logs a
+  // PlanPatch, re-resolves, and the polling loop refreshes the preview.
+  const [editBusy, setEditBusy] = useState(false);
+  const applySceneEdit = async (next: EditPlan) => {
+    setEditBusy(true);
+    try {
+      if (await post("plan", { plan: next, kind: "scene-edit" })) {
+        await refreshArtifacts();
+        setMsg("Edit applied.");
+      }
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  const regenerateScene = async (sceneId: string) => {
+    setEditBusy(true);
+    try {
+      if (await post("regenerate", { sceneId })) {
+        await refreshArtifacts();
+        setMsg(`Scene ${sceneId} regenerated.`);
+      }
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -160,24 +188,16 @@ export function ProjectView({ id }: { id: string }) {
             </div>
 
             <h2>Scenes</h2>
-            <div className="row">
-              {input?.plan.scenes.map((sc) => (
-                <span className="scene-chip" key={sc.id}>
-                  <b>{sc.id}</b> {sc.layout}
-                  {sc.graphic ? ` · ${sc.graphic.component}` : ""}
-                  <button
-                    className="btn secondary small"
-                    onClick={async () => {
-                      if (await post("regenerate", { sceneId: sc.id })) {
-                        setMsg(`Scene ${sc.id} regenerated.`);
-                      }
-                    }}
-                  >
-                    regenerate
-                  </button>
-                </span>
-              ))}
-            </div>
+            {input ? (
+              <SceneEditor
+                plan={input.plan}
+                busy={editBusy}
+                onApply={applySceneEdit}
+                onRegenerate={regenerateScene}
+              />
+            ) : (
+              <p className="dim">Scene editor appears once the plan is ready…</p>
+            )}
 
             <h2>Render</h2>
             <div className="row">
@@ -202,19 +222,26 @@ export function ProjectView({ id }: { id: string }) {
               ))}
             </div>
 
-            <h2>Edit plan (raw)</h2>
-            <textarea
-              className="plan"
-              value={planText}
-              onChange={(e) => {
-                setPlanText(e.target.value);
-                setPlanDirty(true);
-              }}
-            />
-            <div className="row" style={{ marginTop: 10 }}>
-              <button className="btn" onClick={applyPlan} disabled={!planDirty}>
-                Apply plan
-              </button>
+            <details style={{ marginTop: 18 }}>
+              <summary className="dim" style={{ cursor: "pointer" }}>
+                Advanced: raw edit plan (JSON)
+              </summary>
+              <textarea
+                className="plan"
+                style={{ marginTop: 10 }}
+                value={planText}
+                onChange={(e) => {
+                  setPlanText(e.target.value);
+                  setPlanDirty(true);
+                }}
+              />
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn" onClick={applyPlan} disabled={!planDirty}>
+                  Apply JSON
+                </button>
+              </div>
+            </details>
+            <div className="row" style={{ marginTop: 14 }}>
               <button
                 className="btn secondary"
                 onClick={async () => {

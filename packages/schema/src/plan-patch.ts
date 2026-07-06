@@ -8,6 +8,7 @@ export const PlanPatchSchema = z.object({
   at: z.string(), // ISO timestamp
   kind: z.enum([
     "textarea-edit",
+    "scene-edit", // structured per-scene property panel
     "regenerate-scene",
     "replan",
     "caption-toggle",

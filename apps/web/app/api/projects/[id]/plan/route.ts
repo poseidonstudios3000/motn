@@ -17,8 +17,12 @@ export const runtime = "nodejs";
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   if (!jobExists(id)) return new Response("not found", { status: 404 });
-  const body = (await req.json().catch(() => null)) as { plan?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    plan?: unknown;
+    kind?: string;
+  } | null;
   if (!body?.plan) return new Response("missing plan", { status: 400 });
+  const kind = body.kind === "scene-edit" ? "scene-edit" : "textarea-edit";
 
   const parsed = EditPlanSchema.safeParse(body.plan);
   if (!parsed.success) {
@@ -36,7 +40,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const { plan: after } = lintAndSnap(parsed.data, transcript, parsed.data.source.durationMs);
   writeJsonAtomic(planFile, after);
-  appendPatch(id, "textarea-edit", null, before, after);
+  appendPatch(id, kind, null, before, after);
   kick("resolve", id, { force: true });
   return Response.json({ ok: true });
 }
