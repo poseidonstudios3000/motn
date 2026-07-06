@@ -1,0 +1,24 @@
+{
+  "name": "motn",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @motn/web dev",
+    "studio": "pnpm --filter @motn/video studio",
+    "motn": "pnpm --filter @motn/pipeline motn",
+    "test": "vitest run",
+    "typecheck": "pnpm -r --no-bail exec tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^3.0.0"
+  }
+}

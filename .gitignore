@@ -1,0 +1,19 @@
+node_modules/
+.next/
+dist/
+out/
+*.tsbuildinfo
+
+# runtime artifacts — the filesystem database is not source
+data/
+.cache/
+
+# env
+.env
+.env.local
+
+# remotion
+packages/video/.remotion/
+
+# regenerable via eval/fixtures/make-demo.sh
+eval/fixtures/demo.mp4
