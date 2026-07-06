@@ -38,20 +38,25 @@ export const transcribeMock = async (projectId: string): Promise<Transcript> => 
   const totalWeight = sentences.reduce((a, s) => a + s.weight, 0);
   const totalSpeechMs = runs.reduce((a, r) => a + (r.endMs - r.startMs), 0);
 
-  // Greedy linear partition: walk sentences into runs so each run's share of
-  // speech time gets a matching share of script weight.
+  // Proportional assignment: a sentence lands in the run whose share of
+  // total speech TIME contains the sentence's midpoint share of script
+  // WEIGHT. Monotonic, never starves the final runs.
+  const runEndFrac: number[] = [];
+  let acc = 0;
+  for (const r of runs) {
+    acc += r.endMs - r.startMs;
+    runEndFrac.push(acc / totalSpeechMs);
+  }
   const perRun: (typeof sentences)[] = runs.map(() => []);
-  let runIdx = 0;
-  let usedInRun = 0;
+  let cumWeight = 0;
   for (const sentence of sentences) {
-    const runBudget =
-      ((runs[runIdx]!.endMs - runs[runIdx]!.startMs) / totalSpeechMs) * totalWeight;
-    if (usedInRun > 0 && usedInRun + sentence.weight * 0.5 > runBudget && runIdx < runs.length - 1) {
-      runIdx++;
-      usedInRun = 0;
-    }
-    perRun[runIdx]!.push(sentence);
-    usedInRun += sentence.weight;
+    const midFrac = (cumWeight + sentence.weight / 2) / totalWeight;
+    const runIdx = Math.min(
+      runs.length - 1,
+      runEndFrac.findIndex((f) => midFrac <= f),
+    );
+    perRun[runIdx === -1 ? runs.length - 1 : runIdx]!.push(sentence);
+    cumWeight += sentence.weight;
   }
 
   // Lay words out inside each run proportionally to their weights.
